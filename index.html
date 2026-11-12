@@ -21,6 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   :root{
     --blue:#0B5FFF;
@@ -62,6 +63,7 @@
     -webkit-font-smoothing:antialiased;
     text-rendering:optimizeLegibility;
     overflow-x:hidden;
+    overscroll-behavior-y:none;
   }
   body.modal-open{overflow:hidden}
   a{color:inherit;text-decoration:none}
@@ -73,7 +75,6 @@
   .hero{
     position:relative;
     min-height:100svh;
-    overflow:hidden;
     isolation:isolate;
     background:
       radial-gradient(1000px 620px at 50% -8%,rgba(126,176,255,.34),transparent 62%),
@@ -198,13 +199,13 @@
 
   /* ---------- globe stage ---------- */
   .globe-stage{
-    position:absolute;
+    position:sticky;
+    top:0;
     left:50%;
-    bottom:0;
     transform:translateX(-50%);
     width:min(1600px,130vw);
-    height:46vh;
-    min-height:320px;
+    height:100vh;
+    min-height:600px;
     z-index:1;
   }
   .globe-stage canvas{
@@ -257,7 +258,7 @@
 
   /* ---------- floating cards ---------- */
   .float-card{
-    position:absolute;
+    position:sticky;
     z-index:4;
     border-radius:22px;
     background:rgba(255,255,255,.68);
@@ -454,6 +455,84 @@
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
   }
+
+  /* ---------- map section ---------- */
+  .map-section{
+    position:relative;
+    padding:clamp(80px,10vh,120px) clamp(20px,5vw,80px);
+    background:
+      radial-gradient(800px 400px at 50% 0%,rgba(126,176,255,.15),transparent 60%),
+      radial-gradient(600px 300px at 100% 100%,rgba(190,208,255,.12),transparent 50%),
+      #F7FAFF;
+  }
+  .map-header{
+    max-width:800px;
+    margin:0 auto clamp(40px,6vh,60px);
+    text-align:center;
+  }
+  .map-header h2{
+    font-family:var(--font-display);
+    font-size:clamp(2rem,4vw,3rem);
+    font-weight:var(--weight-semibold);
+    letter-spacing:-.03em;
+    line-height:1.1;
+    color:var(--ink);
+    margin:0 0 12px;
+  }
+  .map-subtitle{
+    font-size:clamp(1rem,1.2vw,1.125rem);
+    line-height:1.6;
+    color:var(--muted);
+    max-width:600px;
+    margin:0 auto;
+  }
+  .map-container{
+    width:100%;
+    max-width:1200px;
+    height:70vh;
+    min-height:500px;
+    margin:0 auto;
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:0 32px 80px rgba(11,60,150,.12),0 0 0 1px rgba(11,95,255,.06);
+    background:#fff;
+  }
+  .map-legend{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:16px 32px;
+    margin-top:28px;
+    padding:0 16px;
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:var(--muted);
+    font-weight:var(--weight-medium);
+  }
+  .legend-dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    flex:0 0 auto;
+  }
+  .legend-dot.green{background:#12A150;box-shadow:0 0 0 3px rgba(18,161,80,.15)}
+  .legend-dot.amber{background:#FF9F0A;box-shadow:0 0 0 3px rgba(255,159,10,.15)}
+  .legend-dot.red{background:#E5484D;box-shadow:0 0 0 3px rgba(229,72,77,.15)}
+  .legend-train{
+    width:18px;
+    height:18px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B5FFF' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;
+  }
+
+  @media (max-width:720px){
+    .map-section{padding:clamp(60px,8vh,80px) 18px}
+    .map-container{height:60vh;min-height:400px;border-radius:18px}
+    .map-legend{gap:12px 24px}
+  }
 </style>
 </head>
 <body>
@@ -512,6 +591,20 @@
     <b>Route B</b> 27 min <span class="save">saves 3 min</span>
   </div>
 </div>
+
+<section class="map-section" id="map-section" aria-labelledby="map-title">
+  <div class="map-header">
+    <h2 id="map-title">Live Railway Crossings</h2>
+    <p class="map-subtitle">Real-time train positions and gate status across the network</p>
+  </div>
+  <div class="map-container" id="map-container"></div>
+  <div class="map-legend" aria-hidden="true">
+    <div class="legend-item"><span class="legend-dot green"></span>Gate open</div>
+    <div class="legend-item"><span class="legend-dot amber"></span>Closing soon</div>
+    <div class="legend-item"><span class="legend-dot red"></span>Gate closed</div>
+    <div class="legend-item"><span class="legend-train"></span>Live train</div>
+  </div>
+</section>
 
 <dialog class="planner" id="planner" aria-labelledby="planner-title" aria-describedby="planner-desc">
   <div class="planner-shell">
@@ -600,6 +693,7 @@
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (function () {
   "use strict";
@@ -736,22 +830,56 @@
     resize();
 
     var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    var pointerX = 0;
-    var pointerY = 0;
-    window.addEventListener("pointermove", function (e) {
-      pointerY = (e.clientX / window.innerWidth - 0.5) * 0.07;
-      pointerX = (e.clientY / window.innerHeight - 0.5) * 0.035;
-    }, { passive: true });
+    var scrollY = 0;
+    var targetScrollY = 0;
+    var scrollProgress = 0;
+
+    function onScroll() {
+      var hero = document.querySelector('.hero');
+      var heroRect = hero.getBoundingClientRect();
+      var heroHeight = hero.offsetHeight;
+      var windowHeight = window.innerHeight;
+
+      // Calculate scroll progress through the hero section
+      // scrollProgress goes from 0 (top of hero at top of viewport) to 1 (bottom of hero at top of viewport)
+      if (heroRect.bottom <= 0) {
+        scrollProgress = 1;
+      } else if (heroRect.top >= windowHeight) {
+        scrollProgress = 0;
+      } else {
+        scrollProgress = Math.max(0, Math.min(1, 1 - heroRect.bottom / (heroHeight + windowHeight)));
+      }
+
+      // Also track raw scroll for parallax
+      targetScrollY = window.scrollY;
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
 
     var raf = 0;
     var last = performance.now();
     function tick(now) {
       var dt = Math.min(0.05, (now - last) / 1000);
       last = now;
+
       if (!reduceMotion) {
+        // Smooth scroll progress interpolation
+        scrollY += (targetScrollY - scrollY) * 0.1;
+
+        // Clouds always drift slowly
         clouds.rotation.y += dt * 0.008;
-        globe.rotation.y += (baseY + pointerY - globe.rotation.y) * 0.045;
-        globe.rotation.x += (baseX + pointerX - globe.rotation.x) * 0.045;
+
+        // Globe rotation driven by scroll progress
+        // At scrollProgress 0: base rotation (India centered)
+        // At scrollProgress 1: rotate ~180 degrees to show other side
+        var scrollRot = scrollProgress * Math.PI * 0.9; // ~162 degrees
+        var targetY = baseY - scrollRot;
+
+        // Add subtle parallax based on scroll position
+        var parallaxY = (targetScrollY / 1000) * 0.15;
+
+        globe.rotation.y += ((targetY + parallaxY) - globe.rotation.y) * 0.04;
+        globe.rotation.x += (baseX - globe.rotation.x) * 0.04;
       }
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);
@@ -958,6 +1086,110 @@
       if (destWrap) destWrap.classList.remove("is-error");
     });
   }
+
+  /* ---------------- map ---------------- */
+  (function initMap() {
+    var container = document.getElementById("map-container");
+    if (!container || !window.L) return;
+
+    // Center on India
+    var map = L.map(container, {
+      zoomControl: false,
+      attributionControl: false,
+      scrollWheelZoom: false,
+      dragging: !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    }).setView([12.97, 77.59], 7);
+
+    // Add tile layer (CartoDB light)
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }).addTo(map);
+
+    // Custom icons
+    var gateIcon = function (color) {
+      return L.divIcon({
+        className: "gate-marker",
+        html: '<div style="width:14px;height:14px;border-radius:50%;background:' + color + ';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.25)"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+    };
+
+    var trainIcon = L.divIcon({
+      className: "train-marker",
+      html: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0B5FFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+
+    // Sample gate data (Kerala region)
+    var gates = [
+      { id: 1, name: "Gate 04 · Kottayam", lat: 9.59, lng: 76.52, status: "closing", eta: "03:38", train: "12625" },
+      { id: 2, name: "Gate 07 · Ettumanoor", lat: 9.67, lng: 76.56, status: "closing", eta: "06:12", train: "16341" },
+      { id: 3, name: "Gate 02 · Kumaranalloor", lat: 9.54, lng: 76.50, status: "open", eta: null, train: null },
+      { id: 4, name: "Gate 11 · Chingavanam", lat: 9.45, lng: 76.54, status: "closing", eta: "02:46", train: "12623" },
+      { id: 5, name: "Gate 09 · Athirampuzha", lat: 9.62, lng: 76.48, status: "open", eta: null, train: null },
+      { id: 6, name: "Gate 06 · Ernakulam", lat: 10.00, lng: 76.30, status: "closing", eta: "05:20", train: "16345" },
+      { id: 7, name: "Gate 03 · Thiruvalla", lat: 9.38, lng: 76.57, status: "closing", eta: "04:51", train: "12625" },
+      { id: 8, name: "Gate 01 · Kollam", lat: 8.89, lng: 76.61, status: "closing", eta: "07:04", train: "16345" },
+      { id: 9, name: "Gate 08 · Alappuzha", lat: 9.50, lng: 76.34, status: "open", eta: null, train: null }
+    ];
+
+    var gateMarkers = [];
+    gates.forEach(function (g) {
+      var color = g.status === "closing" ? "#E5484D" : (g.status === "open" ? "#12A150" : "#FF9F0A");
+      var marker = L.marker([g.lat, g.lng], { icon: gateIcon(color) }).addTo(map);
+      gateMarkers.push({ marker: marker, data: g });
+    });
+
+    // Train positions (animated)
+    var trains = [
+      { id: 1, lat: 9.65, lng: 76.54, route: "Kottayam → Ernakulam", speed: "85 km/h", progress: 0.3, line: [[9.59, 76.52], [10.00, 76.30]] },
+      { id: 2, lat: 9.48, lng: 76.55, route: "Kollam → Kottayam", speed: "72 km/h", progress: 0.6, line: [[8.89, 76.61], [9.59, 76.52]] },
+      { id: 3, lat: 9.55, lng: 76.49, route: "Alappuzha → Kottayam", speed: "68 km/h", progress: 0.15, line: [[9.50, 76.34], [9.59, 76.52]] }
+    ];
+
+    var trainMarkers = [];
+    var trainLines = [];
+    trains.forEach(function (t) {
+      var marker = L.marker([t.lat, t.lng], { icon: trainIcon }).addTo(map);
+      trainMarkers.push({ marker: marker, data: t, baseLat: t.lat, baseLng: t.lng });
+
+      var line = L.polyline(t.line, {
+        color: "#0B5FFF",
+        weight: 2,
+        opacity: 0.4,
+        dashArray: "8,12",
+        smoothFactor: 1
+      }).addTo(map);
+      trainLines.push(line);
+    });
+
+    // Animation loop for trains
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var lastTime = performance.now();
+    function animateMap(now) {
+      var dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      if (!reduceMotion) {
+        trains.forEach(function (t, i) {
+          // Animate along the line
+          var p = (t.progress + dt * 0.08) % 1;
+          t.progress = p;
+          var lat = t.line[0][0] + (t.line[1][0] - t.line[0][0]) * p;
+          var lng = t.line[0][1] + (t.line[1][1] - t.line[0][1]) * p;
+          trainMarkers[i].marker.setLatLng([lat, lng]);
+        });
+      }
+      requestAnimationFrame(animateMap);
+    }
+    requestAnimationFrame(animateMap);
+
+    // Add zoom control
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+  })();
 })();
 </script>
 </body>
