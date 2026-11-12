@@ -709,9 +709,11 @@
     fillLight.position.set(2.6, -0.8, 1.4);
     scene.add(fillLight);
 
-    globe.rotation.y = -2.95;
+    var baseY = -2.95;
+    var baseX = 0.08;
+    globe.rotation.y = baseY;
     globe.rotation.z = -0.12;
-    globe.rotation.x = 0.08;
+    globe.rotation.x = baseX;
 
     var W = 1, H = 1;
     function resize() {
@@ -734,14 +736,22 @@
     resize();
 
     var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var pointerX = 0;
+    var pointerY = 0;
+    window.addEventListener("pointermove", function (e) {
+      pointerY = (e.clientX / window.innerWidth - 0.5) * 0.07;
+      pointerX = (e.clientY / window.innerHeight - 0.5) * 0.035;
+    }, { passive: true });
+
     var raf = 0;
     var last = performance.now();
     function tick(now) {
       var dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       if (!reduceMotion) {
-        globe.rotation.y += dt * 0.035;
-        clouds.rotation.y += dt * 0.012;
+        clouds.rotation.y += dt * 0.008;
+        globe.rotation.y += (baseY + pointerY - globe.rotation.y) * 0.045;
+        globe.rotation.x += (baseX + pointerX - globe.rotation.x) * 0.045;
       }
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);
