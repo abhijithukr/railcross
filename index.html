@@ -866,6 +866,7 @@
 
     var raf = 0;
     var last = performance.now();
+    var globeScale = 1;
     function tick(now) {
       var dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -888,6 +889,11 @@
 
         globe.rotation.y += ((targetY + parallaxY) - globe.rotation.y) * 0.04;
         globe.rotation.x += (baseX - globe.rotation.x) * 0.04;
+
+        // Scroll-driven zoom: the Earth grows slightly as the hero scrolls away
+        var targetScale = 1 + scrollProgress * 0.22;
+        globeScale += (targetScale - globeScale) * 0.06;
+        globe.scale.setScalar(globeScale);
       }
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);
