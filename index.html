@@ -75,6 +75,7 @@
   .hero{
     position:relative;
     min-height:100svh;
+    overflow:clip;
     isolation:isolate;
     background:
       radial-gradient(1000px 620px at 50% -8%,rgba(126,176,255,.34),transparent 62%),
@@ -199,14 +200,15 @@
 
   /* ---------- globe stage ---------- */
   .globe-stage{
-    position:sticky;
-    top:0;
+    position:absolute;
+    top:53%;
     left:50%;
     transform:translateX(-50%);
     width:min(1600px,130vw);
     height:100vh;
     min-height:600px;
     z-index:1;
+    pointer-events:none;
   }
   .globe-stage canvas{
     position:absolute;inset:0;width:100%;height:100%;
@@ -258,8 +260,9 @@
 
   /* ---------- floating cards ---------- */
   .float-card{
-    position:sticky;
+    position:absolute;
     z-index:4;
+    pointer-events:none;
     border-radius:22px;
     background:rgba(255,255,255,.68);
     border:1px solid rgba(255,255,255,.9);
@@ -504,6 +507,18 @@
     gap:16px 32px;
     margin-top:28px;
     padding:0 16px;
+  }
+  .map-container .leaflet-control-attribution{
+    padding:2px 7px;
+    border-radius:8px 0 0 0;
+    background:rgba(255,255,255,.84);
+    color:#6B7A90;
+    font-size:10px;
+  }
+  .map-container .leaflet-control-attribution a{color:#33507A}
+  .map-container .leaflet-control-zoom a{
+    color:#33507A;
+    border-color:#E1EBFA;
   }
   .legend-item{
     display:flex;
@@ -838,17 +853,10 @@
       var hero = document.querySelector('.hero');
       var heroRect = hero.getBoundingClientRect();
       var heroHeight = hero.offsetHeight;
-      var windowHeight = window.innerHeight;
 
       // Calculate scroll progress through the hero section
       // scrollProgress goes from 0 (top of hero at top of viewport) to 1 (bottom of hero at top of viewport)
-      if (heroRect.bottom <= 0) {
-        scrollProgress = 1;
-      } else if (heroRect.top >= windowHeight) {
-        scrollProgress = 0;
-      } else {
-        scrollProgress = Math.max(0, Math.min(1, 1 - heroRect.bottom / (heroHeight + windowHeight)));
-      }
+      scrollProgress = Math.max(0, Math.min(1, -heroRect.top / Math.max(1, heroHeight)));
 
       // Also track raw scroll for parallax
       targetScrollY = window.scrollY;
@@ -1092,18 +1100,17 @@
     var container = document.getElementById("map-container");
     if (!container || !window.L) return;
 
-    // Center on India
+    // Center on the Kerala crossing cluster
     var map = L.map(container, {
       zoomControl: false,
-      attributionControl: false,
       scrollWheelZoom: false,
       dragging: !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    }).setView([12.97, 77.59], 7);
+    }).setView([9.5, 76.5], 9);
 
-    // Add tile layer (CartoDB light)
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    // Add tile layer (Esri Light Gray Canvas)
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 16,
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
     }).addTo(map);
 
     // Custom icons
@@ -1128,17 +1135,17 @@
       { id: 1, name: "Gate 04 · Kottayam", lat: 9.59, lng: 76.52, status: "closing", eta: "03:38", train: "12625" },
       { id: 2, name: "Gate 07 · Ettumanoor", lat: 9.67, lng: 76.56, status: "closing", eta: "06:12", train: "16341" },
       { id: 3, name: "Gate 02 · Kumaranalloor", lat: 9.54, lng: 76.50, status: "open", eta: null, train: null },
-      { id: 4, name: "Gate 11 · Chingavanam", lat: 9.45, lng: 76.54, status: "closing", eta: "02:46", train: "12623" },
+      { id: 4, name: "Gate 11 · Chingavanam", lat: 9.45, lng: 76.54, status: "closed", eta: "02:46", train: "12623" },
       { id: 5, name: "Gate 09 · Athirampuzha", lat: 9.62, lng: 76.48, status: "open", eta: null, train: null },
       { id: 6, name: "Gate 06 · Ernakulam", lat: 10.00, lng: 76.30, status: "closing", eta: "05:20", train: "16345" },
-      { id: 7, name: "Gate 03 · Thiruvalla", lat: 9.38, lng: 76.57, status: "closing", eta: "04:51", train: "12625" },
+      { id: 7, name: "Gate 03 · Thiruvalla", lat: 9.38, lng: 76.57, status: "closed", eta: "04:51", train: "12625" },
       { id: 8, name: "Gate 01 · Kollam", lat: 8.89, lng: 76.61, status: "closing", eta: "07:04", train: "16345" },
       { id: 9, name: "Gate 08 · Alappuzha", lat: 9.50, lng: 76.34, status: "open", eta: null, train: null }
     ];
 
     var gateMarkers = [];
     gates.forEach(function (g) {
-      var color = g.status === "closing" ? "#E5484D" : (g.status === "open" ? "#12A150" : "#FF9F0A");
+      var color = g.status === "closed" ? "#E5484D" : (g.status === "closing" ? "#FF9F0A" : "#12A150");
       var marker = L.marker([g.lat, g.lng], { icon: gateIcon(color) }).addTo(map);
       gateMarkers.push({ marker: marker, data: g });
     });
